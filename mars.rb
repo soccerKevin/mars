@@ -34,7 +34,7 @@ class PathFinder
       { poi: solution[:poi], solution: solution[:paths].shortest }
     end
 
-    binding.pry
+    pp best_solutions
   end
 
   # poi = point of interest
