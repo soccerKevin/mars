@@ -24,13 +24,16 @@ class PathFinder
   end
 
   def find_paths
-    path_trees = points_of_interest.map do |interesting_point|
-      tree_first_node = traverse @start_point, interesting_point
+    solutions = points_of_interest.map do |interesting_point|
+      path_tree = traverse @start_point, interesting_point
+      paths = path_tree.path_to(interesting_point.i).extract_values
+      { poi: interesting_point, paths: paths }
     end
 
-    path_tree = traverse @start_point, points_of_interest.first
-    paths = path_tree.path_to points_of_interest.first.i
-    paths = paths.extract_values
+    best_solutions = solutions.map do |solution|
+      { poi: solution[:poi], solution: solution[:paths].shortest }
+    end
+
     binding.pry
   end
 
@@ -63,7 +66,8 @@ class PathFinder
     ]
 
     children = possible_points.map do |coords|
-      return nil unless @map[coords[:y]] # nil if row doesn't exist (y is out of bounds)
+      next unless coords[:y] > -1 && coords[:x] > -1 # prevents wrapping around the map
+      next if @map[coords[:y]].nil? # nil if row doesn't exist (y is out of bounds)
       point = @map[coords[:y]][coords[:x]]
     end.compact # compact to remove nils
 
@@ -76,14 +80,11 @@ class PathFinder
   end
 end
 
-$points_index = 0
-
 class Point
   attr_accessor :x, :y, :i
 
   def initialize(type, x, y)
-    # name each point for path tracking
-    @i = ($points_index = $points_index + 1)
+    @i = "#{x}#{y}".to_i
     @type = type
     @x = x
     @y = y
@@ -116,15 +117,7 @@ class Node
   end
 end
 
-# for random chars
-class Randomizer
-  CHARS = ('a'..'z').to_a + ('0'..'9').to_a + ['!', '@', '#', '$', '%', '^', '&', '*', '(', ')']
-
-  def self.char
-    CHARS.sample
-  end
-end
-
+# monkey patching on array to simplify the results
 class Array
   def flatten_blanks
     each{ |elem| elem.flatten_blanks if elem.is_a?(Array) }
@@ -148,11 +141,23 @@ class Array
       end
     end
   end
+
+  def shortest
+    min_length = 1000
+    value = nil
+    each do |elem|
+      if elem.length < min_length
+        min_length = elem.length
+        value = elem
+      end
+    end
+    value
+  end
 end
 
 mars = [
   "+++++++++",
-  "+XXX!+XXX",
+  "+XXX!+XX+",
   "++!+++X!+",
   "++++!+X++",
   "++XX+++++",
